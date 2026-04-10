@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "title": "Decision Logger First Decision",
+    "decision": "We use JSON files with index.json to track decisions",
+    "created_at": "2026-04-10T21:06:47.595570+00:00"
+  },
+  {
+    "id": 2,
+    "title": "Recall Service ansvarar f\u00f6r SRS-state",
+    "decision": "Recall Service hanterar all SRS-state, inte Concepta. Anledning: Enkelt att reasona om, skalar b\u00e4ttre f\u00f6r fler appar.",
+    "created_at": "2026-04-10T21:06:52.462389+00:00"
+  }
+]
