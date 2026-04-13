@@ -94,6 +94,57 @@ def handle_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def format_markdown_single(match: dict[str, Any]) -> str:
+    date = match.get("created_at", "")[:10]
+    title = match.get("title", "Untitled")
+    decision = match.get("decision", "")
+    rationale = match.get("rationale", "")
+    status = match.get("status", "Accepted")
+    tags = match.get("tags", [])
+
+    lines = [
+        f"# [{date}] {title}",
+        "",
+        "## Context",
+        match.get("context", "N/A"),
+        "",
+        "## Decision",
+        decision,
+        "",
+        "## Rationale",
+        rationale or "N/A",
+        "",
+        f"## Status",
+        f"✅ {status}" if status.lower() == "accepted" else f"⚠️ {status}",
+    ]
+    if tags:
+        lines.extend(["", f"## Tags", ", ".join(tags)])
+
+    return "\n".join(lines)
+
+
+def handle_markdown(args: argparse.Namespace) -> int:
+    decisions = load_decisions(args.db)
+    if not decisions:
+        print("# No decisions logged yet.")
+        return 0
+
+    if args.id:
+        match = next(
+            (item for item in decisions if int(item.get("id", -1)) == args.id), None
+        )
+        if not match:
+            raise SystemExit(f"Decision with id {args.id} not found")
+        print(format_markdown_single(match))
+    else:
+        lines = ["# Architecture Decisions", ""]
+        for item in decisions:
+            lines.append(format_markdown_single(item))
+            lines.append("\n---\n")
+        print("\n".join(lines).strip())
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Log and review architecture decisions"
@@ -118,6 +169,10 @@ def build_parser() -> argparse.ArgumentParser:
     show_parser = subparsers.add_parser("show", help="Show a decision by id")
     show_parser.add_argument("id", type=int, help="Decision id")
     show_parser.set_defaults(func=handle_show)
+
+    md_parser = subparsers.add_parser("markdown", help="Export decisions as Markdown")
+    md_parser.add_argument("--id", type=int, help="Export single decision by id")
+    md_parser.set_defaults(func=handle_markdown)
 
     return parser
 
