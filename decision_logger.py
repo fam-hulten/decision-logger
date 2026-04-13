@@ -58,6 +58,10 @@ def handle_add(args: argparse.Namespace) -> int:
         "id": decision_id,
         "title": args.title,
         "decision": args.decision,
+        "context": args.context or "",
+        "rationale": args.rationale or "",
+        "tags": [t.strip() for t in args.tags.split(",")] if args.tags else [],
+        "status": args.status or "Proposed",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     decisions.append(record)
@@ -161,6 +165,10 @@ def build_parser() -> argparse.ArgumentParser:
     add_parser = subparsers.add_parser("add", help="Add a new decision")
     add_parser.add_argument("title", help="Short title of the decision")
     add_parser.add_argument("decision", help="Decision details")
+    add_parser.add_argument("--context", help="Context/background")
+    add_parser.add_argument("--rationale", help="Why this decision was made")
+    add_parser.add_argument("--tags", help="Comma-separated tags")
+    add_parser.add_argument("--status", default="Proposed", help="Status (default: Proposed)")
     add_parser.set_defaults(func=handle_add)
 
     list_parser = subparsers.add_parser("list", help="List all decisions")
