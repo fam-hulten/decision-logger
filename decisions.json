@@ -10,5 +10,18 @@
     "title": "Recall Service ansvarar f\u00f6r SRS-state",
     "decision": "Recall Service hanterar all SRS-state, inte Concepta. Anledning: Enkelt att reasona om, skalar b\u00e4ttre f\u00f6r fler appar.",
     "created_at": "2026-04-10T21:06:52.462389+00:00"
+  },
+  {
+    "id": 3,
+    "title": "Studywise anv\u00e4nder RavenDB",
+    "decision": "Vi anv\u00e4nder RavenDB f\u00f6r Studywise",
+    "context": "Beh\u00f6vde v\u00e4lja databas f\u00f6r persistence",
+    "rationale": "Bra .NET-st\u00f6d, embedded mode",
+    "tags": [
+      "architecture",
+      "database"
+    ],
+    "status": "Accepted",
+    "created_at": "2026-04-13T21:05:59.006148+00:00"
   }
 ]

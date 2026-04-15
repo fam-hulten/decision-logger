@@ -1,36 +1,23 @@
 # Decision Logger
 
-CLI for documenting architecture decisions.
+CLI tool for documenting architecture decisions.
+
+## Commands
+- `decision-logger init` - Initialize decision directory
+- `decision-logger add <title>` - Add a new decision
+- `decision-logger list` - List all decisions
+- `decision-logger get <slug>` - Show a specific decision
+
+## Format
+Each decision is a markdown file with:
+- Context
+- Decision
+- Rationale
+- Status
+- Tags
 
 ## Usage
-
-Run the CLI directly with Python:
-
 ```bash
-python decision_logger.py --help
-```
-
-### Add a decision
-
-```bash
-python decision_logger.py add "Use Postgres" "Postgres is reliable and supports JSONB."
-```
-
-### List decisions
-
-```bash
-python decision_logger.py list
-```
-
-### Show one decision
-
-```bash
-python decision_logger.py show 1
-```
-
-By default, data is stored in `decisions.json` in the current directory.
-Use `--db` to point at a different file:
-
-```bash
-python decision_logger.py --db data/decisions.json list
+./decision-logger.sh list
+./decision-logger.sh add "My Decision Title"
 ```
