@@ -28,13 +28,13 @@
     "id": 4,
     "title": "Concepta \u00e4r monolith",
     "decision": "Concepta och Recall \u00e4r i samma codebase och deployment. Inga separata tj\u00e4nster.",
-    "context": "Beh\u00f6vde avg\u00f6ra arkitektur f\u00f6r Concepta och Recall-tj\u00e4nsterna",
-    "rationale": "Mikrotj\u00e4nster ger overhead utan nytta f\u00f6r v\u00e5r skala. Monolit \u00e4r enklare att utveckla, testa och deploya.",
+    "context": "Studywise b\u00f6rjade som ett litet projekt med ett litet team. N\u00e4r arkitekturen diskuterades fanns fr\u00e5gan: monolith eller mikrotj\u00e4nster? Beslutet togs baserat p\u00e5 teamets storlek och behov av speed.",
+    "rationale": "Mikrotj\u00e4nster kr\u00e4ver mer infrastruktur, observability, och coordination. F\u00f6r ett litet team ger monolith kortare time-to-market och enklare debugging.",
     "tags": [
       "architecture",
       "concepta"
     ],
-    "status": "accepted",
+    "status": "Accepted",
     "created_at": "2026-04-16T21:07:54.839630+00:00"
   },
   {
