@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "description": "Architecture decisions",
+  "decisions": [
+    {
+      "slug": "2026-04-18-recall-service-\u00e4ger-srs-state",
+      "title": "Recall Service \u00e4ger SRS-state",
+      "date": "2026-04-18",
+      "status": "Accepted",
+      "tags": [
+        "architecture",
+        "recall",
+        "srs"
+      ],
+      "file": "2026-04-18-recall-service-\u00e4ger-srs-state.md"
+    }
+  ]
+}
