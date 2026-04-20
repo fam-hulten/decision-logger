@@ -1,166 +1,164 @@
 #!/usr/bin/env python3
-
-"""Decision Logger CLI.
-
-Stores decisions in a JSON file and supports:
-- add: create a new decision record
-- list: show all saved decisions
-- show: display one decision by id
-"""
-
-from __future__ import annotations
+"""Decision Logger CLI - Manage architecture decisions with YAML frontmatter."""
 
 import argparse
-import json
+import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 
-DEFAULT_DB_PATH = Path("decisions.json")
-
-
-def load_decisions(db_path: Path) -> list[dict[str, Any]]:
-    if not db_path.exists():
-        return []
-
-    raw = db_path.read_text(encoding="utf-8")
-    if not raw.strip():
-        return []
-
+def get_repo_root() -> Path:
     try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise SystemExit(f"Invalid JSON in {db_path}: {exc}") from exc
-
-    if not isinstance(data, list):
-        raise SystemExit(f"Invalid database format in {db_path}: expected a list")
-
-    return data
-
-
-def save_decisions(db_path: Path, decisions: list[dict[str, Any]]) -> None:
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(decisions, indent=2, ensure_ascii=True)
-    db_path.write_text(f"{payload}\n", encoding="utf-8")
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return Path(result.stdout.strip())
+    except subprocess.CalledProcessError as e:
+        raise SystemExit("Not in a git repository") from e
 
 
-def next_id(decisions: list[dict[str, Any]]) -> int:
-    if not decisions:
-        return 1
-    return max(int(item.get("id", 0)) for item in decisions) + 1
+def decisions_dir(repo_root: Path) -> Path:
+    return repo_root / ".decisions"
+
+
+def ensure_decisions_dir(repo_root: Path) -> Path:
+    d = decisions_dir(repo_root)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def format_frontmatter(data: dict) -> str:
+    lines = ["---"]
+    for key, value in data.items():
+        if isinstance(value, list):
+            lines.append(f"{key}:")
+            for item in value:
+                lines.append(f"  - {item}")
+        else:
+            lines.append(f"{key}: {value}")
+    lines.append("---")
+    return "\n".join(lines) + "\n"
+
+
+def parse_frontmatter(content: str) -> tuple[dict, str]:
+    if not content.startswith("---"):
+        return {}, content
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        return {}, content
+    frontmatter = {}
+    for line in parts[1].strip().split("\n"):
+        if ": " in line:
+            key, value = line.split(": ", 1)
+            if value.startswith("- "):
+                frontmatter[key] = [
+                    v[2:] for v in value.split("\n") if v.startswith("- ")
+                ]
+            else:
+                frontmatter[key] = value
+        elif line.strip():
+            parts_line = line.split(":")
+            if len(parts_line) >= 2:
+                frontmatter[parts_line[0]] = ":".join(parts_line[1:]).strip()
+    return frontmatter, parts[2].lstrip("\n")
+
+
+def handle_init(args: argparse.Namespace) -> int:
+    repo_root = get_repo_root()
+    d = ensure_decisions_dir(repo_root)
+    index_path = d / "index.md"
+    if index_path.exists():
+        print(f"Decision log already initialized at {index_path}")
+        return 0
+    index_path.write_text("# Decision Log\n\n", encoding="utf-8")
+    print(f"Initialized decision log at {index_path}")
+    return 0
 
 
 def handle_add(args: argparse.Namespace) -> int:
-    decisions = load_decisions(args.db)
-    decision_id = next_id(decisions)
-    record = {
+    repo_root = get_repo_root()
+    d = decisions_dir(repo_root)
+    if not d.exists():
+        raise SystemExit(
+            "Decision log not initialized. Run 'decision_logger.py init' first."
+        )
+
+    decision_id = 1
+    for f in d.glob("*.md"):
+        frontmatter, _ = parse_frontmatter(f.read_text(encoding="utf-8"))
+        if "id" in frontmatter:
+            decision_id = max(decision_id, int(frontmatter["id"]) + 1)
+
+    slug = "".join(c if c.isalnum() or c in "- " else "" for c in args.title.lower())[
+        :50
+    ].strip()
+    filename = d / f"{decision_id:04d}-{slug}.md"
+
+    frontmatter = {
         "id": decision_id,
         "title": args.title,
-        "decision": args.decision,
-        "context": args.context or "",
-        "rationale": args.rationale or "",
-        "tags": [t.strip() for t in args.tags.split(",")] if args.tags else [],
+        "date": datetime.now(timezone.utc).isoformat()[:10],
         "status": args.status or "Proposed",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "tags": [t.strip() for t in args.tags.split(",")] if args.tags else [],
     }
-    decisions.append(record)
-    save_decisions(args.db, decisions)
+
+    body = f"# {args.title}\n\n## Context\n{args.context or 'N/A'}\n\n## Decision\n{args.decision}\n\n## Rationale\n{args.rationale or 'N/A'}\n"
+
+    filename.write_text(format_frontmatter(frontmatter) + body, encoding="utf-8")
     print(f"Added decision #{decision_id}: {args.title}")
     return 0
 
 
 def handle_list(args: argparse.Namespace) -> int:
-    decisions = load_decisions(args.db)
-    if not decisions:
+    repo_root = get_repo_root()
+    d = decisions_dir(repo_root)
+    if not d.exists():
+        raise SystemExit("No decisions found. Run 'decision_logger.py init' first.")
+
+    files = sorted(d.glob("*.md"), key=lambda p: p.name, reverse=True)
+    if not files:
         print("No decisions logged yet.")
         return 0
 
-    print(f"Found {len(decisions)} decision(s):")
-    for item in decisions:
-        print(f"- [{item['id']}] {item['title']} ({item['created_at']})")
+    print(f"Found {len(files)} decision(s):")
+    for f in files:
+        content = f.read_text(encoding="utf-8")
+        frontmatter, _ = parse_frontmatter(content)
+        title = frontmatter.get("title", f.stem)
+        date = frontmatter.get("date", "unknown")
+        status = frontmatter.get("status", "unknown")
+        print(f"- [{date}] {title} ({status})")
     return 0
 
 
-def handle_show(args: argparse.Namespace) -> int:
-    decisions = load_decisions(args.db)
-    match = next(
-        (item for item in decisions if int(item.get("id", -1)) == args.id), None
-    )
-    if not match:
-        raise SystemExit(f"Decision with id {args.id} not found")
+def handle_get(args: argparse.Namespace) -> int:
+    repo_root = get_repo_root()
+    d = decisions_dir(repo_root)
+    if not d.exists():
+        raise SystemExit("No decisions found. Run 'decision_logger.py init' first.")
 
-    print(f"id: {match['id']}")
-    print(f"title: {match['title']}")
-    print(f"created_at: {match['created_at']}")
-    print("decision:")
-    print(match["decision"])
-    return 0
+    decision_id = args.id
+    pattern = f"{decision_id:04d}-*.md"
+    matches = list(d.glob(pattern))
 
+    if not matches:
+        raise SystemExit(f"Decision #{decision_id} not found")
 
-def format_markdown_single(match: dict[str, Any]) -> str:
-    date = match.get("created_at", "")[:10]
-    title = match.get("title", "Untitled")
-    decision = match.get("decision", "")
-    rationale = match.get("rationale", "")
-    status = match.get("status", "Accepted")
-    tags = match.get("tags", [])
-
-    lines = [
-        f"# [{date}] {title}",
-        "",
-        "## Context",
-        match.get("context", "N/A"),
-        "",
-        "## Decision",
-        decision,
-        "",
-        "## Rationale",
-        rationale or "N/A",
-        "",
-        f"## Status",
-        f"✅ {status}" if status.lower() == "accepted" else f"⚠️ {status}",
-    ]
-    if tags:
-        lines.extend(["", f"## Tags", ", ".join(tags)])
-
-    return "\n".join(lines)
-
-
-def handle_markdown(args: argparse.Namespace) -> int:
-    decisions = load_decisions(args.db)
-    if not decisions:
-        print("# No decisions logged yet.")
-        return 0
-
-    if args.id:
-        match = next(
-            (item for item in decisions if int(item.get("id", -1)) == args.id), None
-        )
-        if not match:
-            raise SystemExit(f"Decision with id {args.id} not found")
-        print(format_markdown_single(match))
-    else:
-        lines = ["# Architecture Decisions", ""]
-        for item in decisions:
-            lines.append(format_markdown_single(item))
-            lines.append("\n---\n")
-        print("\n".join(lines).strip())
+    content = matches[0].read_text(encoding="utf-8")
+    _, body = parse_frontmatter(content)
+    print(body)
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Log and review architecture decisions"
-    )
-    parser.add_argument(
-        "--db",
-        type=Path,
-        default=DEFAULT_DB_PATH,
-        help=f"Path to JSON database file (default: {DEFAULT_DB_PATH})",
-    )
-
+    parser = argparse.ArgumentParser(description="Decision Logger CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    subparsers.add_parser("init", help="Initialize decision log in repository")
 
     add_parser = subparsers.add_parser("add", help="Add a new decision")
     add_parser.add_argument("title", help="Short title of the decision")
@@ -168,19 +166,18 @@ def build_parser() -> argparse.ArgumentParser:
     add_parser.add_argument("--context", help="Context/background")
     add_parser.add_argument("--rationale", help="Why this decision was made")
     add_parser.add_argument("--tags", help="Comma-separated tags")
-    add_parser.add_argument("--status", default="Proposed", help="Status (default: Proposed)")
+    add_parser.add_argument(
+        "--status", default="Proposed", help="Status (default: Proposed)"
+    )
     add_parser.set_defaults(func=handle_add)
 
-    list_parser = subparsers.add_parser("list", help="List all decisions")
-    list_parser.set_defaults(func=handle_list)
+    subparsers.add_parser("list", help="List all decisions").set_defaults(
+        func=handle_list
+    )
 
-    show_parser = subparsers.add_parser("show", help="Show a decision by id")
-    show_parser.add_argument("id", type=int, help="Decision id")
-    show_parser.set_defaults(func=handle_show)
-
-    md_parser = subparsers.add_parser("markdown", help="Export decisions as Markdown")
-    md_parser.add_argument("--id", type=int, help="Export single decision by id")
-    md_parser.set_defaults(func=handle_markdown)
+    get_parser = subparsers.add_parser("get", help="Show a decision by id")
+    get_parser.add_argument("id", type=int, help="Decision id")
+    get_parser.set_defaults(func=handle_get)
 
     return parser
 
@@ -188,6 +185,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
+
+    if args.command == "init":
+        return handle_init(args)
+
     return args.func(args)
 
 
