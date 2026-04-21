@@ -4,5 +4,23 @@
     "title": "Recall Service ansvarar f\u00f6r SRS-state",
     "date": "2026-04-21",
     "status": "Accepted"
+  },
+  {
+    "slug": "2026-04-21-microsoft-entra-external-id-f\u00f6r-auth",
+    "title": "Microsoft Entra External ID f\u00f6r auth",
+    "date": "2026-04-21",
+    "status": "Accepted"
+  },
+  {
+    "slug": "2026-04-21-.net-9-+-ravendb-+-azure-container-apps-tech-stack",
+    "title": ".NET 9 + RavenDB + Azure Container Apps tech stack",
+    "date": "2026-04-21",
+    "status": "Accepted"
+  },
+  {
+    "slug": "2026-04-21-concepta-hanterar-course-subject-content",
+    "title": "Concepta hanterar Course Subject Content",
+    "date": "2026-04-21",
+    "status": "Accepted"
   }
 ]
